@@ -1,0 +1,46 @@
+# OpenTelemetry Collector Configuration - Synthetic Monitoring Demo
+# Author: The Silent Node
+# Purpose: Probes external endpoints and exports metrics to Prometheus
+
+extensions:
+  health_check:
+    endpoint: "0.0.0.0:13133"  # Kubernetes readiness probe endpoint
+  pprof:
+    endpoint: "0.0.0.0:1777"   # Performance profiling
+
+receivers:
+  # The "Prober" - Generates synthetic traffic
+  httpcheck:
+    targets:
+      - endpoint: https://platformsignals.dev
+        method: GET
+      - endpoint: https://www.google.com
+        method: GET
+    collection_interval: 10s
+    timeout: 5s
+
+processors:
+  # Best Practice: Batch data to reduce outgoing network calls
+  batch:
+    send_batch_size: 1000
+    timeout: 10s
+
+exporters:
+  # 1. Export to Console (For Debugging during setup)
+  debug:
+    verbosity: detailed
+
+  # 2. Export to Prometheus (The Database)
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: "synthetic_prober"
+    send_timestamps: true
+    metric_expiration: 180m
+
+service:
+  extensions: [health_check, pprof]
+  pipelines:
+    metrics:
+      receivers: [httpcheck]
+      processors: [batch]
+      exporters: [debug, prometheus]
