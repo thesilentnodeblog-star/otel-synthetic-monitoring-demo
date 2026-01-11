@@ -1,0 +1,1 @@
+# otel-synthetic-monitoring-demo
